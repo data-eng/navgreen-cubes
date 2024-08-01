@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "navgreen-cubes"
+packages = [ {include = "netcdf"} ]
+version = "0.1"
+description = "Methods for pre-processing weather data"
+authors = [ "Natalia Koliou <nataliakoliou@iit.demokritos.gr>",
+	    "Tatiana Boura <tatianabou@iit.demokritos.gr>",
+	    "Stasinos Konstantopoulos <konstant@iit.demokritos.gr>" ]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+pandas = "^2.2"
+numpy = "^1.26"
+netCDF4 = "^1.7"
+matplotlib = "^3.8"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+runme = "runme:main"
