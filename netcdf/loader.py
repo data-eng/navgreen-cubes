@@ -66,13 +66,14 @@ def make_time( dataset, check_shape ):
 fname = "data/med-hcmr-wav-rean-h_multi-vars_23.00E-26.96E_34.02N-39.98N_2020-08-10-2020-08-18.nc"
 f = netCDF4.Dataset( fname, "r", format="NETCDF4" )
 vhm,vtm,vmdr = make_waves( f, (216,144,96) )
-lat,lon = make_space( f, (144,96) )
+#lat,lon = make_space( f, (144,96) )
 tim = make_time( f, (216) )
 f.close()
 
 fname = "data/wind_dir.nc"
 f = netCDF4.Dataset( fname, "r", format="NETCDF3" )
 wind_dir = make_wind( f, vhm.shape )
+lat,lon = make_space( f, (144,96) )
 f.close()
 
 fname = "data/wind_speed.nc"
@@ -95,4 +96,20 @@ dataframe = numpy.concatenate(
 df = pandas.DataFrame(
     dataframe.reshape( (216*144*96,8) ),
     columns=["TIME","LAT","LON","VHM0","VTM01_WW","VMDR_WW","wind_dir","wind_speed"] )
+
+df.VHM0 = df.VHM0.replace(to_replace=-32767.0, value=-999.0)
+df.VTM01_WW = df.VTM01_WW.replace(to_replace=-32767.0, value=-999.0)
+df.VMDR_WW = df.VMDR_WW.replace(to_replace=-32767.0, value=-999.0)
+
+df = df.astype('float64').round( {"LAT": 3, "LON":3,
+                                  "VHM0": 2, "VTM01_WW": 3, "VMDR_WW": 0,
+                                  "wind_dir": 0, "wind_speed": 1} )
+df.TIME = df.TIME.astype(int)
+df.wind_dir = df.wind_dir.astype(int)
+
+# Alternative, but creates dep on jinja2
+#df.style.format( {"LAT": "{:.3f}", "LON": "{:.3f}",
+#                  "VHM0": "{:.2f}", "VTM01_WW": "{:.3f}",
+#                  "wind_dir": "{:d}", "wind_speed": "{:.1f}"} )
+
 df.to_csv("data.csv")
