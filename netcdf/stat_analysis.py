@@ -352,3 +352,6 @@ for path in paths:
 
         print("Creating histograms...")
         histogram(df)
+
+        df['DATETIME'] = pd.to_datetime(df['TIME'], unit='s')
+        df.to_csv(f'{folder_path}/data_datetime.csv', index=False)
