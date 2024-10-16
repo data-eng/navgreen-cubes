@@ -26,6 +26,19 @@ def make_wind( dataset, check_shape ):
     return arr
 
 
+def make_new_wind( dataset, check_shape ):
+    # The file is lon x lat x sfc(time)
+    # Before returning,
+    # transpose to time x lat x lon to be the same as waves
+    dim_tim = dataset["sfc"].shape[0]
+    assert (check_shape == None) or (check_shape[0] == dim_tim)
+    dim_lat = dataset["lat"].shape[0]
+    assert (check_shape == None) or (check_shape[1] == dim_lat)
+    dim_lon = dataset["lon"].shape[0]
+    assert (check_shape == None) or (check_shape[2] == dim_lon)
+    return numpy.array( dataset["Band1"] )
+
+
 def make_waves( dataset, check_shape ):
     # "VHM0", "VTM01_WW", "VMDR_WW"
     # with three dimensions: time x latitude x longitude
@@ -40,14 +53,14 @@ def make_waves( dataset, check_shape ):
 
 def make_space( dataset, check_shape ):
     key = None
-    if "latitude" in f.dimensions.keys(): key = "latitude"
-    elif "lat" in f.dimensions.keys(): key = "lat"
+    if "latitude" in dataset.dimensions.keys(): key = "latitude"
+    elif "lat" in dataset.dimensions.keys(): key = "lat"
     if key == None: lat = None
     else: lat = numpy.array( dataset[key] )
 
     key = None
-    if "longitude" in f.dimensions.keys(): key = "longitude"
-    elif "lon" in f.dimensions.keys(): key = "lon"
+    if "longitude" in dataset.dimensions.keys(): key = "longitude"
+    elif "lon" in dataset.dimensions.keys(): key = "lon"
     if key == None: lon = None
     else: lon = numpy.array( dataset[key] )
 
@@ -56,30 +69,55 @@ def make_space( dataset, check_shape ):
 
 def make_time( dataset, check_shape ):
     key = None
-    if "time" in f.dimensions.keys(): key = "time"
+    if "time" in dataset.dimensions.keys(): key = "time"
     if key == None: tim = None
     else: tim = numpy.array( dataset[key] )
     return tim
 
 
+def old_files():
+    fname = "data/med-hcmr-wav-rean-h_multi-vars_23.00E-26.96E_34.02N-39.98N_2020-08-10-2020-08-18.nc"
+    f = netCDF4.Dataset( fname, "r", format="NETCDF4" )
+    vhm,vtm,vmdr = make_waves( f, (216,144,96) )
+    tim = make_time( f, (216) )
+    f.close()
 
-fname = "data/med-hcmr-wav-rean-h_multi-vars_23.00E-26.96E_34.02N-39.98N_2020-08-10-2020-08-18.nc"
-f = netCDF4.Dataset( fname, "r", format="NETCDF4" )
-vhm,vtm,vmdr = make_waves( f, (216,144,96) )
-#lat,lon = make_space( f, (144,96) )
-tim = make_time( f, (216) )
-f.close()
+    fname = "data/wind_dir.nc"
+    f = netCDF4.Dataset( fname, "r", format="NETCDF3" )
+    wind_dir = make_wind( f, vhm.shape )
+    lat,lon = make_space( f, (144,96) )
+    f.close()
 
-fname = "data/wind_dir.nc"
-f = netCDF4.Dataset( fname, "r", format="NETCDF3" )
-wind_dir = make_wind( f, vhm.shape )
-lat,lon = make_space( f, (144,96) )
-f.close()
+    fname = "data/wind_speed.nc"
+    f = netCDF4.Dataset( fname, "r", format="NETCDF3" )
+    wind_speed = make_wind( f, wind_dir.shape )
+    f.close()
 
-fname = "data/wind_speed.nc"
-f = netCDF4.Dataset( fname, "r", format="NETCDF3" )
-wind_speed = make_wind( f, wind_dir.shape )
-f.close()
+    return tim,lat,lon,vhm,vtm,vmdr,wind_dir,wind_speed
+
+def new_files():
+    fname = "data/med-hcmr-wav-rean-h_multi-vars_23.00E-26.96E_34.02N-39.98N_2019-01-21-2019-01-26.nc"
+    f = netCDF4.Dataset( fname, "r", format="NETCDF4" )
+    vhm,vtm,vmdr = make_waves( f, (144,144,96) )
+    #lat,lon = make_space( f, (144,96) )
+    tim = make_time( f, (144) )
+    f.close()
+
+    fname = "data/wind_dir.nc"
+    f = netCDF4.Dataset( fname, "r", format="NETCDF3" )
+    wind_dir = make_new_wind( f, (144,144,96) )
+    lat,lon = make_space( f, (144,96) )
+    f.close()
+
+    fname = "data/wind_speed.nc"
+    f = netCDF4.Dataset( fname, "r", format="NETCDF3" )
+    wind_speed = make_new_wind( f, (144,144,96) )
+    f.close()
+
+    return tim,lat,lon,vhm,vtm,vmdr,wind_dir,wind_speed
+
+
+tim,lat,lon,vhm,vtm,vmdr,wind_dir,wind_speed = new_files()
 
 # Now make an array time x lat x lon x var
 # where var is 0: vhm, 1: vtm, 2: vmdr, 3: wind_dir, 4: wind_speed
@@ -90,11 +128,20 @@ dims = numpy.vstack( list(itertools.product(tim,lat,lon)) )
 
 # Put everything together
 # New array is time x lat x long x var
+
+#dataframe = numpy.concatenate(
+#    (dims.reshape(216,144,96,3), cube),
+#    axis=3 )
+
 dataframe = numpy.concatenate(
-    (dims.reshape(216,144,96,3), cube),
+    (dims.reshape(144,144,96,3), cube),
     axis=3 )
+
+#df = pandas.DataFrame(
+#    dataframe.reshape( (216*144*96,8) ),
+#    columns=["TIME","LAT","LON","VHM0","VTM01_WW","VMDR_WW","wind_dir","wind_speed"] )
 df = pandas.DataFrame(
-    dataframe.reshape( (216*144*96,8) ),
+    dataframe.reshape( (144*144*96,8) ),
     columns=["TIME","LAT","LON","VHM0","VTM01_WW","VMDR_WW","wind_dir","wind_speed"] )
 
 df.VHM0 = df.VHM0.replace(to_replace=-32767.0, value=-999.0)
